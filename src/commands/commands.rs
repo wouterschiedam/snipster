@@ -1,4 +1,5 @@
 use regex::Regex;
+use std::io::{self, Write};
 use std::process::{Command, Stdio};
 
 use crate::{
@@ -95,54 +96,35 @@ impl StripsterCommand {
         Ok(snip)
     }
 
-    pub fn edit_command_with_fzf(content: &str) -> Result<String, StripsterError> {
+    pub fn edit_command_with_input(content: &str) -> Result<String, String> {
         let mut final_command = content.to_string();
 
         // Regex to match placeholders like `<...>`
-        let placeholder_regex = Regex::new(r"<[^>]+>")
-            .map_err(|e| StripsterError::CommandError(format!("Invalid regex: {}", e)))?;
+        let placeholder_regex =
+            Regex::new(r"<[^>]+>").map_err(|e| format!("Invalid regex: {}", e))?;
 
-        // Continue processing until no more placeholders are found
+        // Process each placeholder
         while let Some(captures) = placeholder_regex.find(&final_command) {
-            let placeholder = captures.as_str();
+            let placeholder = captures.as_str(); // Extract placeholder like `<placeholder>`
+            println!("Enter value for {}: ", placeholder);
 
-            let fzf_command =
-                format!(r#"fzf --print-query --prompt="Edit value for {placeholder}: ""#);
+            // Prompt user for input
+            let mut input = String::new();
+            print!("> "); // Show a prompt symbol
+            io::stdout()
+                .flush()
+                .map_err(|e| format!("Failed to flush stdout: {}", e))?;
+            io::stdin()
+                .read_line(&mut input)
+                .map_err(|e| format!("Failed to read input: {}", e))?;
 
-            let output = Command::new("sh")
-                .arg("-c")
-                .arg(&fzf_command)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .output();
+            let replacement = input.trim(); // Remove any trailing newline or spaces
 
-            match output {
-                Ok(output) => {
-                    if !output.status.success() {
-                        let stderr = String::from_utf8(output.stderr)?;
-                        return Err(StripsterError::CommandError(format!(
-                            "fzf failed: {}",
-                            stderr
-                        )));
-                    }
-
-                    // Capture user input and replace the placeholder
-                    let replacement = String::from_utf8(output.stdout)
-                        .map_err(|e| StripsterError::Utf8Error(e))?
-                        .trim()
-                        .to_string();
-
-                    // Replace the placeholder in the command
-                    final_command = final_command.replacen(placeholder, &replacement, 1);
-                }
-                Err(e) => {
-                    return Err(StripsterError::OutputParsingError(format!(
-                        "Unexpected format from fzf output: {}",
-                        e.to_string()
-                    )));
-                }
-            }
+            // Replace the placeholder in the command
+            final_command = final_command.replacen(placeholder, replacement, 1);
         }
+
+        dbg!("{}", &final_command);
 
         Ok(final_command)
     }

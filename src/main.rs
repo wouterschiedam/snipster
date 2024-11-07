@@ -54,7 +54,7 @@ fn run() -> Result<(), StripsterError> {
         Some(Commands::List { copy }) => StripsterCommand::get_snip_with_fzf(*copy),
         Some(Commands::Write) | None => match StripsterCommand::get_snip_with_fzf(false) {
             Ok(snip) => {
-                let output = StripsterCommand::edit_command_with_fzf(snip.content.as_str());
+                let output = StripsterCommand::edit_command_with_input(snip.content.as_str());
                 Ok(snip)
             }
             Err(e) => {
