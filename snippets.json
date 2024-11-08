@@ -1,52 +1,76 @@
 {
-  "list_files": {
-    "name": "list_files",
-    "content": "ls -l",
-    "note": "Lists all files in the current directory with detailed information."
-  },
-  "show_hidden_files": {
-    "name": "show_hidden_files",
-    "content": "ls -la",
-    "note": "Displays all files, including hidden ones, in the current directory."
-  },
-  "find_file": {
-    "name": "find_file",
-    "content": "find . -name <filename>",
-    "note": "Searches for a file with the given name in the current directory and subdirectories."
-  },
-  "copy_file": {
-    "name": "copy_file",
-    "content": "cp <source_file> <destination_file>",
-    "note": "Copies a file from the source path to the destination path."
-  },
-  "move_file": {
-    "name": "move_file",
-    "content": "mv <source_file> <destination_file>",
-    "note": "Moves a file from the source path to the destination path."
-  },
-  "delete_file": {
-    "name": "delete_file",
-    "content": "rm <file>",
-    "note": "Deletes the specified file."
-  },
-  "search_in_files": {
-    "name": "search_in_files",
-    "content": "grep -r '<search_term>' .",
-    "note": "Recursively searches for a term within files in the current directory."
-  },
-  "check_disk_usage": {
-    "name": "check_disk_usage",
-    "content": "du -h --max-depth=1",
-    "note": "Displays disk usage for files and directories in human-readable format."
-  },
-  "show_running_processes": {
-    "name": "show_running_processes",
-    "content": "top",
-    "note": "Displays the currently running processes with resource usage."
-  },
-  "kill_process": {
-    "name": "kill_process",
-    "content": "kill <PID>",
-    "note": "Terminates a process with the given process ID (PID)."
-  }
+  "filesystem": [
+    {
+      "name": "list_files",
+      "content": "ls -l",
+      "note": "Lists all files in the current directory with detailed information.",
+      "placeholders": []
+    },
+    {
+      "name": "show_hidden_files",
+      "content": "ls -la",
+      "note": "Displays all files, including hidden ones, in the current directory.",
+      "placeholders": []
+    },
+    {
+      "name": "find_file",
+      "content": "find . -name <file>",
+      "note": "Searches for a file with the given name in the current directory and subdirectories.",
+      "placeholders": ["File"]
+    },
+    {
+      "name": "copy_file",
+      "content": "cp <file> <directory>",
+      "note": "Copies a file from the source path to the destination path.",
+      "placeholders": ["File", "Directory"]
+    },
+    {
+      "name": "move_file",
+      "content": "mv <file> <directory>",
+      "note": "Moves a file from the source path to the destination path.",
+      "placeholders": ["File", "Directory"]
+    },
+    {
+      "name": "delete_file",
+      "content": "rm <file>",
+      "note": "Deletes the specified file.",
+      "placeholders": ["File"]
+    }
+  ],
+  "search": [
+    {
+      "name": "search_in_files",
+      "content": "grep -r '<command>' .",
+      "note": "Recursively searches for a term within files in the current directory.",
+      "placeholders": ["Command"]
+    }
+  ],
+  "system": [
+    {
+      "name": "check_disk_usage",
+      "content": "du -h --max-depth=1",
+      "note": "Displays disk usage for files and directories in human-readable format.",
+      "placeholders": []
+    },
+    {
+      "name": "show_running_processes",
+      "content": "top",
+      "note": "Displays the currently running processes with resource usage.",
+      "placeholders": []
+    },
+    {
+      "name": "kill_process",
+      "content": "kill -9 <PID>",
+      "note": "Terminates a process with the given process ID (PID).",
+      "placeholders": ["PID"]
+    }
+  ],
+  "docker": [
+    {
+      "name": "ssh_container",
+      "content": "docker exec -it <container> /bin/bash",
+      "note": "SSH into any Docker container.",
+      "placeholders": ["Container"]
+    }
+  ]
 }

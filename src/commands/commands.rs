@@ -1,94 +1,105 @@
-use regex::Regex;
-use std::io::{self, Write};
 use std::process::{Command, Stdio};
 
 use crate::{
-    clipboard,
-    error::StripsterError,
+    error::SnipsterError,
     storage::file::{write_snippet, Snippet},
+    storage::placeholder::PlaceHolder,
 };
 
-pub struct StripsterCommand;
+use super::fzf_builder::FzfBuilder;
 
-impl StripsterCommand {
-    pub fn get_snip_with_fzf(copy: bool) -> Result<Snippet, StripsterError> {
+pub struct SnipsterCommand;
+
+impl SnipsterCommand {
+    pub fn fzf_with_command(fzf: FzfBuilder, command: &str) -> Result<String, SnipsterError> {
+        let full_command = format!(
+            r#"
+            {} | {}"#,
+            command,
+            fzf.build()
+        );
+
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(full_command)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .map_err(|e| {
+                SnipsterError::OutputParsingError(format!("Failed to execute script: {}", e))
+            })?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let hint = if stderr.contains("fzf: command not found")
+                || stderr.contains("jq: command not found")
+            {
+                Some("Ensure fzf and jq are installed.")
+            } else {
+                None
+            };
+
+            let hint_message = hint.map_or("".to_string(), |hint| format!("Hint: {}", hint));
+            return Err(SnipsterError::CommandError(format!(
+                "{} {}",
+                stderr.trim(),
+                hint_message
+            )));
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+        Ok(stdout)
+    }
+
+    pub fn get_snip_with_fzf(copy: bool) -> Result<Snippet, SnipsterError> {
         // Uhm yes, this is kinda messy.
         let command = r#"
-            max_name_len=$(jq -r '.[] | .name | length' snippets.json | sort -nr | head -n 1)
-            max_note_len=$(jq -r '.[] | .note | length' snippets.json | sort -nr | head -n 1)
+    max_category_len=$(jq -r 'to_entries | .[] | .key | length' snippets.json | sort -nr | head -n 1)
+    max_name_len=$(jq -r '.[] | .[] | .name | length' snippets.json | sort -nr | head -n 1)
+    max_note_len=$(jq -r '.[] | .[] | .note | length' snippets.json | sort -nr | head -n 1)
 
-            cat snippets.json | \
-            jq -r '.[] | "\(.name)\t\(.note)\t\(.content)\t\u0001\(. | @json)"' | \
-            awk -F '\t' -v max_name_len="$max_name_len" -v max_note_len="$max_note_len" '{
-                printf "\033[32m%-*s\033[0m\t\033[36m%-*s\033[0m\t\033[33m%s\033[0m\t%s\n", max_name_len, $1, max_note_len, $2, $3, $4;
-            }' | \
-
-            fzf --ansi --reverse --delimiter="\t" \
-                --with-nth=1,2,3 \
-                --preview='echo -e "\033[1;36m{2} [{1}]\033[0m\n\033[1;33m{3}\033[0m"' \
-                --preview-window=up:2:wrap \
-                --bind='enter:become(echo {4})'"#;
+    cat snippets.json | \
+    jq -r 'to_entries | .[] | .key as $category | .value[] | "\($category)\t\(.name)\t\(.note)\t\(.content)\t\u0001\(. | @json)"' | \
+    awk -F '\t' -v max_category_len="$max_category_len" -v max_name_len="$max_name_len" -v max_note_len="$max_note_len" '{
+        printf "\033[35m%-*s\033[0m\t\033[32m%-*s\033[0m\t\033[36m%-*s\033[0m\t\033[33m%s\033[0m\t%s\n", max_category_len, $1, max_name_len, $2, max_note_len, $3, $4, $5;
+    }' | \
+    fzf --ansi --reverse --delimiter="\t" \
+        --with-nth=1,2,3 \
+        --preview='printf "\033[35m%-15s%s\033[0m\n\033[36m%-15s%s\033[0m\n\033[33m%-15s%s\033[0m\n\033[32m%-15s%s\033[0m\n" \
+                  "Category ->" "{1}" "Name ->" "{2}" "Note ->" "{3}" "Command ->" "{4}"' \
+        --preview-window=up:4:wrap \
+        --bind='enter:become(echo {5})'"#;
 
         let output = Command::new("sh")
             .arg("-c")
             .arg(command)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .output();
+            .output()
+            .map_err(|e| {
+                SnipsterError::OutputParsingError(format!("Failed to execute script: {}", e))
+            })?;
 
-        match output {
-            Ok(output) => {
-                if !output.status.success() {
-                    let stderr = String::from_utf8(output.stderr)?;
+        let stdout = String::from_utf8(output.stdout)?;
 
-                    let hint = match &stderr {
-                        stderr
-                            if stderr.contains("fzf: command not found")
-                                || stderr.contains("jq: command not found") =>
-                        {
-                            Some("List requires fzf and jq")
-                        }
-                        _ => None,
-                    };
+        let unescaped_stdout = stdout.trim().trim_start_matches('\u{1}');
 
-                    let hint = match hint {
-                        Some(hint) => format!("hint: {}", hint),
-                        None => String::new(),
-                    };
+        let snippet: Snippet = serde_json::from_str(unescaped_stdout.trim())
+            .map_err(|e| SnipsterError::SerdeError(e))?;
 
-                    return Err(StripsterError::CommandError(format!("{} {}", stderr, hint)));
-                }
-
-                let stdout = String::from_utf8(output.stdout)?;
-
-                let unescaped_stdout = stdout
-                    .trim()
-                    .trim_start_matches('\u{1}')
-                    .trim_end_matches('\"')
-                    .replace("\\\"", "\"")
-                    .replace("\\\\", "\\");
-
-                let snippet: Snippet = serde_json::from_str(unescaped_stdout.trim())
-                    .map_err(|e| StripsterError::SerdeError(e))?;
-
-                if copy {
-                    let _ = clipboard::copy_to_clipboard(&snippet.content);
-                }
-
-                Ok(snippet)
-            }
-            Err(e) => Err(StripsterError::OutputParsingError(format!(
-                "Unexpected format from fzf output: {}",
-                e.to_string()
-            ))),
-        }
+        Ok(snippet)
     }
 
-    pub fn add_snip(name: &str, content: &str, note: &str) -> Result<Snippet, StripsterError> {
+    pub fn add_snip(name: &str, content: &str, note: &str) -> Result<Snippet, SnipsterError> {
+        let placeholders =
+            PlaceHolder::extract_placeholders(content).map_err(SnipsterError::PlaceHolderError)?;
+
         let snip: Snippet = Snippet {
             name: name.to_string(),
             content: content.to_string(),
             note: note.to_string(),
+            placeholders,
         };
 
         let _ = write_snippet(snip.clone());
@@ -96,36 +107,18 @@ impl StripsterCommand {
         Ok(snip)
     }
 
-    pub fn edit_command_with_input(content: &str) -> Result<String, String> {
-        let mut final_command = content.to_string();
+    pub fn edit_command_with_input(content: &str) -> Result<String, SnipsterError> {
+        let placeholders =
+            PlaceHolder::extract_placeholders(content).map_err(SnipsterError::PlaceHolderError);
 
-        // Regex to match placeholders like `<...>`
-        let placeholder_regex =
-            Regex::new(r"<[^>]+>").map_err(|e| format!("Invalid regex: {}", e))?;
-
-        // Process each placeholder
-        while let Some(captures) = placeholder_regex.find(&final_command) {
-            let placeholder = captures.as_str(); // Extract placeholder like `<placeholder>`
-            println!("Enter value for {}: ", placeholder);
-
-            // Prompt user for input
-            let mut input = String::new();
-            print!("> "); // Show a prompt symbol
-            io::stdout()
-                .flush()
-                .map_err(|e| format!("Failed to flush stdout: {}", e))?;
-            io::stdin()
-                .read_line(&mut input)
-                .map_err(|e| format!("Failed to read input: {}", e))?;
-
-            let replacement = input.trim(); // Remove any trailing newline or spaces
-
-            // Replace the placeholder in the command
-            final_command = final_command.replacen(placeholder, replacement, 1);
+        match placeholders {
+            Ok(result) => result
+                .iter()
+                .map(|x| x.handle())
+                .collect::<Result<String, SnipsterError>>(),
+            Err(_) => Err(SnipsterError::CommandError(
+                "Failed to parse fzf command".to_string(),
+            )),
         }
-
-        dbg!("{}", &final_command);
-
-        Ok(final_command)
     }
 }

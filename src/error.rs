@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum StripsterError {
+pub enum SnipsterError {
     #[error("Command execution failed: {0}")]
     CommandError(String),
 
@@ -16,4 +16,7 @@ pub enum StripsterError {
 
     #[error("I/O operation failed: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[error("Placeholder parsing failed: {0}")]
+    PlaceHolderError(String),
 }
