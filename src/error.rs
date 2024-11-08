@@ -19,4 +19,7 @@ pub enum SnipsterError {
 
     #[error("Placeholder parsing failed: {0}")]
     PlaceHolderError(String),
+
+    #[error("Failed to copy to clipboard: {0}")]
+    ClipboardError(String),
 }

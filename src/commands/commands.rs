@@ -2,8 +2,10 @@ use std::process::{Command, Stdio};
 
 use crate::{
     error::SnipsterError,
-    storage::file::{write_snippet, Snippet},
-    storage::placeholder::PlaceHolder,
+    storage::{
+        file::{write_snippet, Snippet, Snipster},
+        placeholder::PlaceHolder,
+    },
 };
 
 use super::fzf_builder::FzfBuilder;
@@ -52,7 +54,7 @@ impl SnipsterCommand {
         Ok(stdout)
     }
 
-    pub fn get_snip_with_fzf(copy: bool) -> Result<Snippet, SnipsterError> {
+    pub fn get_snip_with_fzf() -> Result<Snipster, SnipsterError> {
         // Uhm yes, this is kinda messy.
         let command = r#"
     max_category_len=$(jq -r 'to_entries | .[] | .key | length' snippets.json | sort -nr | head -n 1)
@@ -88,7 +90,9 @@ impl SnipsterCommand {
         let snippet: Snippet = serde_json::from_str(unescaped_stdout.trim())
             .map_err(|e| SnipsterError::SerdeError(e))?;
 
-        Ok(snippet)
+        Ok(Snipster {
+            snippet: Some(snippet),
+        })
     }
 
     pub fn add_snip(name: &str, content: &str, note: &str) -> Result<Snippet, SnipsterError> {

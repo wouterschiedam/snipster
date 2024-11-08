@@ -1,20 +1,13 @@
-use crossterm::{
-    cursor::MoveTo,
-    execute,
-    terminal::{Clear, ClearType},
-    ExecutableCommand,
-};
-use std::{
-    env,
-    io::{self, Write},
-    process::{Command, Stdio},
-};
-use std::{path::PathBuf, process};
+use clipboard::copy_to_clipboard;
+use std::process;
 
 use clap::{Parser, Subcommand};
 use commands::commands::SnipsterCommand;
 use error::SnipsterError;
-use storage::placeholder::PlaceHolder;
+use storage::{
+    file::{Snippet, Snipster},
+    placeholder::PlaceHolder,
+};
 
 mod clipboard;
 mod commands;
@@ -40,36 +33,8 @@ enum Commands {
     //     #[arg(short = 't', long)]
     //     note: String,
     // },
-    // List {
-    //     #[arg(short = 'c', long)]
-    //     copy: bool,
-    // },
+    List,
     Write,
-}
-
-pub fn execute_command(cmd: String) -> Result<(), SnipsterError> {
-    let current_dir = env::current_dir().map_err(|e| SnipsterError::IoError(e))?;
-
-    let script_path: PathBuf = current_dir.join("sh").join("write_command.sh");
-
-    // dbg!("{}", &cmd);
-
-    let output = Command::new(script_path)
-        .arg(cmd)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|e| {
-            SnipsterError::OutputParsingError(format!("Failed to execute script: {}", e))
-        })?;
-
-    // Check the output status
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(SnipsterError::CommandError(format!("{}", stderr.trim())));
-    }
-
-    Ok(())
 }
 
 fn main() {
@@ -79,7 +44,7 @@ fn main() {
     }
 }
 
-fn run() -> Result<(), SnipsterError> {
+fn run() -> Result<Snipster, SnipsterError> {
     let cli = Cli::parse();
 
     let result = match &cli.command {
@@ -88,19 +53,21 @@ fn run() -> Result<(), SnipsterError> {
         //     content,
         //     note,
         // }) => SnipsterCommand::add_snip(name, content, note),
-        // Some(Commands::List { copy }) => SnipsterCommand::get_snip_with_fzf(*copy),
-        Some(Commands::Write) | None => match SnipsterCommand::get_snip_with_fzf(false) {
+        Some(Commands::List) => SnipsterCommand::get_snip_with_fzf(),
+        Some(Commands::Write) | None => match SnipsterCommand::get_snip_with_fzf() {
             Ok(snip) => {
-                let output = SnipsterCommand::edit_command_with_input(snip.content.as_str());
-
-                let command = match output {
-                    Ok(output) => PlaceHolder::replace_with_value(&snip, &output),
-                    Err(e) => Err(e),
-                };
-
-                match command {
-                    Ok(cmd) => execute_command(cmd),
-                    Err(e) => Err(e),
+                if let Some(snippet) = snip.snippet {
+                    let output = SnipsterCommand::edit_command_with_input(snippet.content.as_str());
+                    let command = match output {
+                        Ok(output) => PlaceHolder::replace_with_value(&snippet, &output),
+                        Err(e) => Err(e),
+                    };
+                    match command {
+                        Ok(cmd) => copy_to_clipboard(&cmd),
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    Err(SnipsterError::CommandError("ERROR".to_string()))
                 }
             }
             Err(e) => Err(e),

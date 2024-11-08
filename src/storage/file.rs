@@ -18,6 +18,10 @@ pub struct Snippet {
     pub placeholders: Vec<PlaceHolder>,
 }
 
+pub struct Snipster {
+    pub snippet: Option<Snippet>,
+}
+
 pub fn load_snippets() -> Result<HashMap<String, Snippet>, SnipsterError> {
     if !std::path::Path::new(SNIPPET_LOCATION).exists() {
         return Ok(HashMap::new());
