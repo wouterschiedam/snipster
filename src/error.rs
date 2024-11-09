@@ -22,4 +22,7 @@ pub enum SnipsterError {
 
     #[error("Failed to copy to clipboard: {0}")]
     ClipboardError(String),
+
+    #[error("Failed to write to file.")]
+    WriteError,
 }

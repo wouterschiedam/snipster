@@ -4,10 +4,7 @@ use std::process;
 use clap::{Parser, Subcommand};
 use commands::commands::SnipsterCommand;
 use error::SnipsterError;
-use storage::{
-    file::{Snippet, Snipster},
-    placeholder::PlaceHolder,
-};
+use storage::{file::Snipster, placeholder::PlaceHolder};
 
 mod clipboard;
 mod commands;
@@ -25,14 +22,16 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    // Add {
-    //     #[arg(short = 'n', long)]
-    //     name: String,
-    //     #[arg(short = 'c', long)]
-    //     content: String,
-    //     #[arg(short = 't', long)]
-    //     note: String,
-    // },
+    Add {
+        #[arg(short = 'c', long)]
+        category: String,
+        #[arg(short = 'n', long)]
+        name: String,
+        #[arg(short = 'a', long)]
+        content: String,
+        #[arg(short = 't', long)]
+        note: String,
+    },
     List,
     Write,
 }
@@ -48,16 +47,18 @@ fn run() -> Result<Snipster, SnipsterError> {
     let cli = Cli::parse();
 
     let result = match &cli.command {
-        // Some(Commands::Add {
-        //     name,
-        //     content,
-        //     note,
-        // }) => SnipsterCommand::add_snip(name, content, note),
+        Some(Commands::Add {
+            category,
+            name,
+            content,
+            note,
+        }) => SnipsterCommand::add_snip(category, name, content, note),
         Some(Commands::List) => SnipsterCommand::get_snip_with_fzf(),
         Some(Commands::Write) | None => match SnipsterCommand::get_snip_with_fzf() {
             Ok(snip) => {
                 if let Some(snippet) = snip.snippet {
                     let output = SnipsterCommand::edit_command_with_input(snippet.content.as_str());
+
                     let command = match output {
                         Ok(output) => PlaceHolder::replace_with_value(&snippet, &output),
                         Err(e) => Err(e),

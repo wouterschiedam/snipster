@@ -22,7 +22,7 @@ pub struct Snipster {
     pub snippet: Option<Snippet>,
 }
 
-pub fn load_snippets() -> Result<HashMap<String, Snippet>, SnipsterError> {
+pub fn load_snippets() -> Result<HashMap<String, Vec<Snippet>>, SnipsterError> {
     if !std::path::Path::new(SNIPPET_LOCATION).exists() {
         return Ok(HashMap::new());
     }
@@ -36,11 +36,10 @@ pub fn load_snippets() -> Result<HashMap<String, Snippet>, SnipsterError> {
     Ok(snippets)
 }
 
-pub fn write_snippet(snip: Snippet) -> Result<(), SnipsterError> {
-    let mut snippets = load_snippets()?;
+pub fn write_snippet(snip: Snippet, category: &str) -> Result<(), SnipsterError> {
+    let mut snippets: HashMap<String, Vec<Snippet>> = load_snippets()?;
 
-    // Insert the new snippet
-    snippets.insert(snip.name.to_string(), snip);
+    snippets.insert(category.to_string(), vec![snip]);
 
     // Open the file for writing
     let file = OpenOptions::new()

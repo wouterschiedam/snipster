@@ -30,6 +30,7 @@ pub enum PlaceHolder {
     Date,      // Date string (for `date`, `touch`)
     Time,      // Time string (for scheduling or logging)
     Signal,    // Signal type (e.g., `SIGKILL`, `SIGTERM`, for `kill -s`)
+    History,
     Unknown(String),
 }
 impl PlaceHolder {
@@ -47,31 +48,200 @@ impl PlaceHolder {
 
     pub fn handle(&self) -> Result<String, SnipsterError> {
         match self {
+            PlaceHolder::PID => {
+                let fzf = FzfBuilder::new()
+                    .ansi()
+                    .reverse()
+                    .header(1)
+                    .bind("enter:become(echo {2})");
+                SnipsterCommand::fzf_with_command(fzf, Some("ps aux"))
+            }
+            PlaceHolder::File => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("find ~ -type f"))
+            }
+            PlaceHolder::Directory => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("find ~ -type d"))
+            }
             PlaceHolder::Container => {
                 let fzf = FzfBuilder::new()
                     .ansi()
                     .reverse()
                     .header(1)
                     .bind("enter:become(echo {1})");
-                SnipsterCommand::fzf_with_command(fzf, "docker ps")
+                SnipsterCommand::fzf_with_command(fzf, Some("docker ps"))
             }
-            _ => Err(SnipsterError::CommandError(
-                "No handler defined for this placeholder.".into(),
-            )),
+            PlaceHolder::Image => {
+                let fzf = FzfBuilder::new()
+                    .ansi()
+                    .reverse()
+                    .header(1)
+                    .bind("enter:become(echo {3})");
+                SnipsterCommand::fzf_with_command(fzf, Some("docker images"))
+            }
+            PlaceHolder::Port => {
+                let fzf = FzfBuilder::new()
+                    .ansi()
+                    .reverse()
+                    .header(1)
+                    .bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("netstat -tuln"))
+            }
+            PlaceHolder::User => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("getent passwd"))
+            }
+            PlaceHolder::Group => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("getent group"))
+            }
+            PlaceHolder::Command => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("compgen -c"))
+            }
+            PlaceHolder::Package => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("dpkg --get-selections"))
+            }
+            PlaceHolder::Interface => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("ip link show"))
+            }
+            PlaceHolder::Service => {
+                let fzf = FzfBuilder::new()
+                    .ansi()
+                    .reverse()
+                    .header(1)
+                    .bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("systemctl list-units --type=service"))
+            }
+            PlaceHolder::IPAddress => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("ip a"))
+            }
+            PlaceHolder::URL => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("curl --list-only"))
+            }
+            PlaceHolder::Device => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("lsblk"))
+            }
+            PlaceHolder::Disk => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("lsblk -o NAME,SIZE,TYPE,MOUNTPOINT"))
+            }
+            PlaceHolder::Shell => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("cat /etc/shells"))
+            }
+            PlaceHolder::Date => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("date"))
+            }
+            PlaceHolder::Time => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("date +'%H:%M:%S'"))
+            }
+            PlaceHolder::Signal => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("kill -l"))
+            }
+            PlaceHolder::History => {
+                let fzf = FzfBuilder::new().bind("enter:become(echo {1})");
+                SnipsterCommand::fzf_with_command(fzf, Some("history"))
+            }
+            PlaceHolder::Unknown(val) => Err(SnipsterError::CommandError(format!(
+                "Unknown placeholder: {}",
+                val
+            ))),
+            // _ => Err(SnipsterError::CommandError(format!(
+            //     "No handler defined for this placeholder: {:?}",
+            //     self
+            // ))),
         }
     }
 
-    pub fn replace_with_value(snippet: &Snippet, value: &String) -> Result<String, SnipsterError> {
+    pub fn replace_with_value(
+        snippet: &Snippet,
+        values: &Vec<String>,
+    ) -> Result<String, SnipsterError> {
         let mut command = snippet.content.clone(); // Start with the content of the snippet
 
-        for placeholder in &snippet.placeholders {
+        if snippet.placeholders.len() != values.len() {
+            return Err(SnipsterError::CommandError(
+                "Mismatch in the number of placeholders and values".into(),
+            ));
+        }
+
+        for (i, placeholder) in snippet.placeholders.iter().enumerate() {
+            let value = &values[i];
             match placeholder {
                 PlaceHolder::Container => {
-                    command = command.replace("<container>", value); // Replace the placeholder with the value
+                    command = command.replace("<container>", value);
                 }
-                _ => Err(SnipsterError::CommandError(
-                    "No handler defined for this placeholder.".into(),
-                ))?,
+                PlaceHolder::PID => {
+                    command = command.replace("<PID>", value);
+                }
+                PlaceHolder::File => {
+                    command = command.replace("<file>", value);
+                }
+                PlaceHolder::Directory => {
+                    command = command.replace("<directory>", value);
+                }
+                PlaceHolder::Image => {
+                    command = command.replace("<image>", value);
+                }
+                PlaceHolder::Port => {
+                    command = command.replace("<port>", value);
+                }
+                PlaceHolder::User => {
+                    command = command.replace("<user>", value);
+                }
+                PlaceHolder::Group => {
+                    command = command.replace("<group>", value);
+                }
+                PlaceHolder::Command => {
+                    command = command.replace("<command>", value);
+                }
+                PlaceHolder::Package => {
+                    command = command.replace("<package>", value);
+                }
+                PlaceHolder::Interface => {
+                    command = command.replace("<interface>", value);
+                }
+                PlaceHolder::Service => {
+                    command = command.replace("<service>", value);
+                }
+                PlaceHolder::IPAddress => {
+                    command = command.replace("<ip_address>", value);
+                }
+                PlaceHolder::URL => {
+                    command = command.replace("<url>", value);
+                }
+                PlaceHolder::Device => {
+                    command = command.replace("<device>", value);
+                }
+                PlaceHolder::Disk => {
+                    command = command.replace("<disk>", value);
+                }
+                PlaceHolder::Shell => {
+                    command = command.replace("<shell>", value);
+                }
+                PlaceHolder::Date => {
+                    command = command.replace("<date>", value);
+                }
+                PlaceHolder::Time => {
+                    command = command.replace("<time>", value);
+                }
+                PlaceHolder::Signal => {
+                    command = command.replace("<signal>", value);
+                }
+                PlaceHolder::History => command = value.to_string(),
+                PlaceHolder::Unknown(s) => {
+                    command = command.replace(&format!("<{}>", s), value);
+                }
             }
         }
 
@@ -99,6 +269,7 @@ impl PlaceHolder {
             "<shell>" => PlaceHolder::Shell,
             "<date>" => PlaceHolder::Date,
             "<time>" => PlaceHolder::Time,
+            "<history>" => PlaceHolder::History,
             "<signal>" => PlaceHolder::Signal,
             _ => PlaceHolder::Unknown(s.to_string()), // Handle unknown placeholders
         }

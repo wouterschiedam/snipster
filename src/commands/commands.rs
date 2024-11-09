@@ -13,13 +13,19 @@ use super::fzf_builder::FzfBuilder;
 pub struct SnipsterCommand;
 
 impl SnipsterCommand {
-    pub fn fzf_with_command(fzf: FzfBuilder, command: &str) -> Result<String, SnipsterError> {
-        let full_command = format!(
-            r#"
-            {} | {}"#,
-            command,
-            fzf.build()
-        );
+    pub fn fzf_with_command(
+        fzf: FzfBuilder,
+        command: Option<&str>,
+    ) -> Result<String, SnipsterError> {
+        let full_command: String;
+
+        if let Some(command) = command {
+            full_command = format!(r#"{} | {}"#, command, fzf.build());
+        } else {
+            full_command = format!("{}", fzf.build());
+        }
+
+        // dbg!("{}", &full_command);
 
         let output = Command::new("sh")
             .arg("-c")
@@ -95,7 +101,12 @@ impl SnipsterCommand {
         })
     }
 
-    pub fn add_snip(name: &str, content: &str, note: &str) -> Result<Snippet, SnipsterError> {
+    pub fn add_snip(
+        category: &str,
+        name: &str,
+        content: &str,
+        note: &str,
+    ) -> Result<Snipster, SnipsterError> {
         let placeholders =
             PlaceHolder::extract_placeholders(content).map_err(SnipsterError::PlaceHolderError)?;
 
@@ -106,12 +117,16 @@ impl SnipsterCommand {
             placeholders,
         };
 
-        let _ = write_snippet(snip.clone());
+        dbg!("{}", &category);
 
-        Ok(snip)
+        let _ = write_snippet(snip.clone(), category);
+
+        Ok(Snipster {
+            snippet: Some(snip),
+        })
     }
 
-    pub fn edit_command_with_input(content: &str) -> Result<String, SnipsterError> {
+    pub fn edit_command_with_input(content: &str) -> Result<Vec<String>, SnipsterError> {
         let placeholders =
             PlaceHolder::extract_placeholders(content).map_err(SnipsterError::PlaceHolderError);
 
@@ -119,7 +134,7 @@ impl SnipsterCommand {
             Ok(result) => result
                 .iter()
                 .map(|x| x.handle())
-                .collect::<Result<String, SnipsterError>>(),
+                .collect::<Result<Vec<String>, SnipsterError>>(),
             Err(_) => Err(SnipsterError::CommandError(
                 "Failed to parse fzf command".to_string(),
             )),

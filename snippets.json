@@ -35,6 +35,30 @@
       "content": "rm <file>",
       "note": "Deletes the specified file.",
       "placeholders": ["File"]
+    },
+    {
+      "name": "create_directory",
+      "content": "mkdir <directory>",
+      "note": "Creates a new directory.",
+      "placeholders": ["Directory"]
+    },
+    {
+      "name": "remove_empty_directory",
+      "content": "rmdir <directory>",
+      "note": "Removes an empty directory.",
+      "placeholders": ["Directory"]
+    },
+    {
+      "name": "find_and_delete_file",
+      "content": "find <directory> -name <file> -exec rm -f {} \\;",
+      "note": "Finds and deletes files matching a pattern in the specified directory.",
+      "placeholders": ["Directory", "File"]
+    },
+    {
+      "name": "find_history",
+      "content": "<history>",
+      "note": "Retrieves the history with a nice fzf",
+      "placeholders": ["History"]
     }
   ],
   "search": [
@@ -43,6 +67,18 @@
       "content": "grep -r '<command>' .",
       "note": "Recursively searches for a term within files in the current directory.",
       "placeholders": ["Command"]
+    },
+    {
+      "name": "find_and_replace_in_files",
+      "content": "sed -i 's/<command>/<replacement>/g' <file>",
+      "note": "Finds and replaces text in a file.",
+      "placeholders": ["Command", "Command", "File"]
+    },
+    {
+      "name": "search_file_for_pattern",
+      "content": "grep -n '<pattern>' <file>",
+      "note": "Searches a file for a given pattern, displaying line numbers.",
+      "placeholders": ["Pattern", "File"]
     }
   ],
   "system": [
@@ -63,6 +99,42 @@
       "content": "kill -9 <PID>",
       "note": "Terminates a process with the given process ID (PID).",
       "placeholders": ["PID"]
+    },
+    {
+      "name": "system_shutdown",
+      "content": "shutdown -h now",
+      "note": "Shuts down the system immediately.",
+      "placeholders": []
+    },
+    {
+      "name": "system_reboot",
+      "content": "reboot",
+      "note": "Reboots the system.",
+      "placeholders": []
+    },
+    {
+      "name": "show_system_info",
+      "content": "uname -a",
+      "note": "Displays information about the system.",
+      "placeholders": []
+    },
+    {
+      "name": "check_memory_usage",
+      "content": "free -h",
+      "note": "Shows memory usage in human-readable format.",
+      "placeholders": []
+    },
+    {
+      "name": "check_uptime",
+      "content": "uptime",
+      "note": "Shows how long the system has been running.",
+      "placeholders": []
+    },
+    {
+      "name": "check_open_ports",
+      "content": "ss -tuln",
+      "note": "Displays open ports and associated services.",
+      "placeholders": []
     }
   ],
   "docker": [
@@ -71,6 +143,220 @@
       "content": "docker exec -it <container> /bin/bash",
       "note": "SSH into any Docker container.",
       "placeholders": ["Container"]
+    },
+    {
+      "name": "start_container",
+      "content": "docker start <container>",
+      "note": "Starts a stopped Docker container.",
+      "placeholders": ["Container"]
+    },
+    {
+      "name": "stop_container",
+      "content": "docker stop <container>",
+      "note": "Stops a running Docker container.",
+      "placeholders": ["Container"]
+    },
+    {
+      "name": "remove_container",
+      "content": "docker rm <container>",
+      "note": "Removes a stopped Docker container.",
+      "placeholders": ["Container"]
+    },
+    {
+      "name": "list_docker_images",
+      "content": "docker images",
+      "note": "Lists all available Docker images on the system.",
+      "placeholders": []
+    },
+    {
+      "name": "remove_docker_image",
+      "content": "docker rmi <image>",
+      "note": "Removes a Docker image from the local repository.",
+      "placeholders": ["Image"]
+    },
+    {
+      "name": "pull_docker_image",
+      "content": "docker pull <image>",
+      "note": "Downloads a Docker image from the registry.",
+      "placeholders": ["Image"]
+    },
+    {
+      "name": "list_docker_containers",
+      "content": "docker ps -a",
+      "note": "Lists all Docker containers (including stopped ones).",
+      "placeholders": []
+    }
+  ],
+  "networking": [
+    {
+      "name": "show_network_interfaces",
+      "content": "ifconfig",
+      "note": "Displays the network interfaces and their configuration.",
+      "placeholders": []
+    },
+    {
+      "name": "ping_host",
+      "content": "ping <ip_address>",
+      "note": "Pings the specified IP address to check connectivity.",
+      "placeholders": ["IPAddress"]
+    },
+    {
+      "name": "trace_route",
+      "content": "traceroute <ip_address>",
+      "note": "Traces the route packets take to reach a network host.",
+      "placeholders": ["IPAddress"]
+    },
+    {
+      "name": "show_open_ports",
+      "content": "netstat -tuln",
+      "note": "Lists all open network ports and their associated services.",
+      "placeholders": []
+    },
+    {
+      "name": "check_port_status",
+      "content": "nc -zv <ip_address> <port>",
+      "note": "Checks if a specific port on an IP address is open.",
+      "placeholders": ["IPAddress", "Port"]
+    },
+    {
+      "name": "change_ip_address",
+      "content": "sudo ifconfig <interface> <ip_address> netmask 255.255.255.0 up",
+      "note": "Changes the IP address of a network interface.",
+      "placeholders": ["Interface", "IPAddress"]
+    },
+    {
+      "name": "download_with_curl",
+      "content": "curl -O <url>",
+      "note": "Downloads a file from the internet using curl.",
+      "placeholders": ["URL"]
+    },
+    {
+      "name": "download_with_wget",
+      "content": "wget <url>",
+      "note": "Downloads a file from the internet using wget.",
+      "placeholders": ["URL"]
+    }
+  ],
+  "users_and_groups": [
+    {
+      "name": "add_user",
+      "content": "sudo useradd <user>",
+      "note": "Adds a new user to the system.",
+      "placeholders": ["User"]
+    },
+    {
+      "name": "delete_user",
+      "content": "sudo userdel <user>",
+      "note": "Deletes a user from the system.",
+      "placeholders": ["User"]
+    },
+    {
+      "name": "add_group",
+      "content": "sudo groupadd <group>",
+      "note": "Adds a new group to the system.",
+      "placeholders": ["Group"]
+    },
+    {
+      "name": "delete_group",
+      "content": "sudo groupdel <group>",
+      "note": "Deletes a group from the system.",
+      "placeholders": ["Group"]
+    },
+    {
+      "name": "change_user_password",
+      "content": "sudo passwd <user>",
+      "note": "Changes the password of a user.",
+      "placeholders": ["User"]
+    },
+    {
+      "name": "list_users",
+      "content": "cat /etc/passwd",
+      "note": "Lists all users on the system.",
+      "placeholders": []
+    }
+  ],
+  "tmux": [
+    {
+      "name": "start_tmux_session",
+      "content": "tmux new-session -s <session_name>",
+      "note": "Starts a new tmux session with the specified name.",
+      "placeholders": ["Session"]
+    },
+    {
+      "name": "attach_tmux_session",
+      "content": "tmux attach-session -t <session_name>",
+      "note": "Attaches to an existing tmux session.",
+      "placeholders": ["Session"]
+    },
+    {
+      "name": "list_tmux_sessions",
+      "content": "tmux ls",
+      "note": "Lists all active tmux sessions.",
+      "placeholders": []
+    },
+    {
+      "name": "kill_tmux_session",
+      "content": "tmux kill-session -t <session_name>",
+      "note": "Kills the specified tmux session.",
+      "placeholders": ["Session"]
+    },
+    {
+      "name": "split_tmux_pane",
+      "content": "tmux split-window -h",
+      "note": "Splits the current tmux pane horizontally.",
+      "placeholders": []
+    },
+    {
+      "name": "resize_tmux_pane",
+      "content": "tmux resize-pane -D <size>",
+      "note": "Resizes the current tmux pane.",
+      "placeholders": ["Size"]
+    }
+  ],
+  "jq": [
+    {
+      "name": "parse_json",
+      "content": "cat <file> | jq '<command>'",
+      "note": "Parses the JSON in the specified file with a jq command.",
+      "placeholders": ["File", "Command"]
+    },
+    {
+      "name": "filter_json_key",
+      "content": "cat <file> | jq '.<key>'",
+      "note": "Filters the value of a specified key from a JSON file.",
+      "placeholders": ["File", "Key"]
+    }
+  ],
+  "git": [
+    {
+      "name": "clone_repository",
+      "content": "git clone <repository_url>",
+      "note": "Clones a Git repository from the specified URL.",
+      "placeholders": ["Repository"]
+    },
+    {
+      "name": "check_git_status",
+      "content": "git status",
+      "note": "Shows the status of the current git repository.",
+      "placeholders": []
+    },
+    {
+      "name": "commit_changes",
+      "content": "git commit -m '<commit_message>'",
+      "note": "Commits changes with the specified commit message.",
+      "placeholders": ["Commit_Message"]
+    },
+    {
+      "name": "push_changes",
+      "content": "git push",
+      "note": "Pushes committed changes to the remote repository.",
+      "placeholders": []
+    },
+    {
+      "name": "create_git_branch",
+      "content": "git checkout -b <branch_name>",
+      "note": "Creates a new git branch.",
+      "placeholders": ["Branch"]
     }
   ]
 }
